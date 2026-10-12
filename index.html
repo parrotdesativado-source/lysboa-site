@@ -26,10 +26,6 @@ const SITE = {
   discord: "https://discord.gg/lysboarp",
   rodape: "Servidor não oficial. GTA San Andreas e SA-MP pertencem aos seus respectivos donos.",
 
-  // Endereço da API de login (veja o guia). Deixe vazio "" enquanto não tiver.
-  // Exemplo: "https://api.seudominio.com"
-  api: "",
-
   // Arquivo que o robô do GitHub atualiza com os jogadores online. Não mude.
   status: "data/status.json"
 };
@@ -170,30 +166,6 @@ const EQUIPE = [
   h2 { font-family: "Unbounded", sans-serif; font-weight: 700; font-size: clamp(24px, 3.6vw, 36px); line-height: 1.15; margin-bottom: 12px; text-wrap: balance; }
   .intro { color: var(--suave); max-width: 38em; margin-bottom: 30px; }
 
-  /* Minha conta */
-  #conta { padding: 48px 0 0; }
-  .conta-card {
-    display: grid; grid-template-columns: 190px 1fr; gap: 32px; align-items: center;
-    background: linear-gradient(160deg, var(--card-2), var(--card));
-    border: 1px solid var(--linha); border-radius: 20px; padding: 28px;
-  }
-  @media (max-width: 720px) { .conta-card { grid-template-columns: 1fr; text-align: center; } }
-  .skin-caixa {
-    width: 190px; height: 250px; border-radius: 16px; margin: 0 auto;
-    background: radial-gradient(circle at 50% 30%, rgba(139,92,246,.45), rgba(15,8,24,.9));
-    border: 1px solid var(--linha); display: grid; place-items: center; overflow: hidden;
-  }
-  .skin-caixa img { max-width: 100%; max-height: 100%; object-fit: contain; }
-  .skin-caixa span { color: var(--suave); font-weight: 700; padding: 10px; }
-  .conta-nome { font-family: "Unbounded", sans-serif; font-weight: 700; font-size: 26px; margin-bottom: 4px; word-break: break-word; }
-  .selo { display: inline-block; padding: 3px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; background: rgba(139,92,246,.2); color: var(--lilas); margin-bottom: 18px; }
-  .selo.verde { background: rgba(74,222,128,.15); color: var(--verde); }
-  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; text-align: left; }
-  .campo { background: var(--bg); border: 1px solid var(--linha); border-radius: 12px; padding: 12px 14px; }
-  .campo span { display: block; color: var(--suave); font-size: 13px; font-weight: 600; }
-  .campo strong { font-size: 19px; word-break: break-word; }
-  .visitante-texto { color: #d9cdf2; max-width: 34em; margin-bottom: 18px; }
-  .visitante-card { grid-template-columns: 1fr; text-align: left; }
 
   /* Jogadores */
   .busca { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
@@ -259,26 +231,6 @@ const EQUIPE = [
 
   footer { padding: 26px 0; text-align: center; color: var(--suave); font-size: 14px; border-top: 1px solid var(--linha); }
 
-  /* Login */
-  dialog {
-    margin: auto; border: 1px solid var(--linha); border-radius: 20px; padding: 30px;
-    background: var(--card); color: var(--texto); width: min(440px, calc(100% - 32px));
-    box-shadow: 0 30px 80px rgba(0,0,0,.6);
-  }
-  dialog::backdrop { background: rgba(8, 3, 16, .75); backdrop-filter: blur(3px); }
-  dialog h2 { font-size: 24px; }
-  dialog p.sub { color: var(--suave); font-size: 15px; margin-bottom: 20px; }
-  label { display: block; font-weight: 700; font-size: 14px; margin: 14px 0 6px; }
-  input.texto {
-    width: 100%; background: var(--bg); border: 1px solid var(--linha); color: var(--texto);
-    padding: 12px 14px; border-radius: 10px; font: inherit;
-  }
-  input.texto:focus { border-color: var(--roxo); outline: none; box-shadow: 0 0 0 3px rgba(139,92,246,.35); }
-  .erro { color: var(--vermelho); font-size: 14px; font-weight: 600; margin-top: 12px; min-height: 20px; }
-  .acoes { display: grid; gap: 10px; margin-top: 10px; }
-  .acoes .btn { width: 100%; text-align: center; }
-  .fechar { position: absolute; top: 14px; right: 16px; background: none; border: 0; color: var(--suave); font-size: 26px; cursor: pointer; line-height: 1; }
-  .aviso-privacidade { color: var(--suave); font-size: 13px; margin-top: 16px; }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -303,15 +255,11 @@ const EQUIPE = [
     <nav aria-label="Menu principal">
       <a href="#jogadores">Jogadores online</a>
       <a href="#como-entrar">Como entrar</a>
+      <a href="#coins">Coins</a>
       <a href="#sobre">Sobre</a>
       <a href="#regras">Regras</a>
       <a href="#equipe">Equipe</a>
     </nav>
-    <div class="conta-topo">
-      <span class="chip-usuario" id="chip-usuario" hidden></span>
-      <button class="btn btn-principal btn-pequeno" id="btn-abrir-login" type="button">Entrar</button>
-      <button class="btn btn-borda btn-pequeno" id="btn-sair" type="button" hidden>Sair</button>
-    </div>
   </div>
 </header>
 
@@ -339,13 +287,6 @@ const EQUIPE = [
       </div>
     </div>
   </div>
-
-  <!-- Área do usuário (aparece depois de entrar ou de escolher visitante) -->
-  <section id="conta" hidden>
-    <div class="wrap">
-      <div class="conta-card" id="conta-card"></div>
-    </div>
-  </section>
 
   <section id="jogadores">
     <div class="wrap">
@@ -388,6 +329,51 @@ const EQUIPE = [
           </div>
         </li>
       </ol>
+    </div>
+  </section>
+
+
+  <section id="coins" class="alt">
+    <div class="wrap">
+      <h2>Como comprar e receber Coins</h2>
+      <p class="intro">Siga o procedimento oficial para solicitar Coins no Lysboa Roleplay. A equipe confirma o pagamento e realiza a entrega pelo servidor.</p>
+      <ol class="passos">
+        <li>
+          <div>
+            <h3>Entre no nosso Discord</h3>
+            <p>Acesse o Discord oficial pelo botão no início da página e entre com sua conta.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Abra um ticket de Coins</h3>
+            <p>Procure a categoria de suporte/loja e abra um ticket para compra ou recebimento de Coins. Se não encontrar a opção, abra um ticket geral e peça orientação à equipe.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Informe os dados necessários</h3>
+            <p>Envie seu nick exatamente como aparece no jogo, o pacote de Coins desejado e o comprovante, caso o pagamento já tenha sido realizado. Nunca envie sua senha.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Aguarde a confirmação da equipe</h3>
+            <p>Um responsável verificará a solicitação e explicará as opções de pagamento e o prazo de entrega. Faça pagamentos somente pelos meios confirmados pela equipe oficial.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Confira os Coins no servidor</h3>
+            <p>Após a confirmação, entre no jogo e confira seu saldo. Se os Coins não aparecerem, responda no mesmo ticket para que a equipe verifique.</p>
+          </div>
+        </li>
+      </ol>
+      <div class="botoes" style="margin-top:28px">
+        <a class="btn btn-principal" id="btn-ticket-coins" href="#" target="_blank" rel="noopener">Abrir ticket no Discord</a>
+        <a class="btn btn-borda" href="#como-entrar">Como entrar no servidor</a>
+      </div>
+      <p class="intro" style="margin-top:22px;margin-bottom:0">Importante: não compre Coins de terceiros e não compartilhe sua senha. Use sempre o ticket oficial para manter o registro do atendimento.</p>
     </div>
   </section>
 
@@ -437,25 +423,6 @@ const EQUIPE = [
   <div class="wrap"><p id="rodape"></p></div>
 </footer>
 
-<!-- Janela de login -->
-<dialog id="dlg" aria-labelledby="dlg-titulo">
-  <button class="fechar" id="dlg-fechar" type="button" aria-label="Fechar">&times;</button>
-  <h2 id="dlg-titulo">Entrar</h2>
-  <p class="sub">Use o mesmo nick e a mesma senha do servidor.</p>
-  <form id="form-login" autocomplete="off">
-    <label for="nick">Nick no servidor</label>
-    <input class="texto" id="nick" name="nick" type="text" maxlength="24" required autocapitalize="off" spellcheck="false">
-    <label for="senha">Senha</label>
-    <input class="texto" id="senha" name="senha" type="password" maxlength="64" required autocomplete="current-password">
-    <p class="erro" id="erro" role="alert"></p>
-    <div class="acoes">
-      <button class="btn btn-principal" id="btn-enviar" type="submit">Entrar com minha conta</button>
-      <button class="btn btn-borda" id="btn-visitante" type="button">Não tenho conta, entrar como visitante</button>
-    </div>
-  </form>
-  <p class="aviso-privacidade">Sua senha é enviada de forma segura para o servidor, apenas para conferir o login. Ela não fica guardada neste site.</p>
-</dialog>
-
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -473,6 +440,7 @@ const EQUIPE = [
   $("btn-download").href = SITE.download;
   $("link-download").href = SITE.download;
   $("btn-discord").href = SITE.discord;
+  $("btn-ticket-coins").href = SITE.discord;
   $("ip-texto").textContent = SITE.ip;
   $("ip-passo").textContent = SITE.ip;
   $("rodape").textContent = SITE.rodape;
@@ -511,7 +479,6 @@ const EQUIPE = [
 
   function desenharJogadores() {
     const termo = chave($("filtro").value);
-    const meu = sessao && sessao.tipo === "conta" ? chave(sessao.nick) : null;
     const lista = listaAtual.filter((j) => !termo || chave(j.nome).includes(termo));
     const box = $("lista-jogadores");
     if (!listaAtual.length) {
@@ -523,7 +490,7 @@ const EQUIPE = [
       return;
     }
     box.innerHTML = lista.map((j) =>
-      '<div class="jogador' + (meu && chave(j.nome) === meu ? " eu" : "") + '"><b>' + esc(j.nome) + "</b><small>ID " + esc(j.id) + " · " + esc(j.ping) + " ms</small></div>"
+      '<div class="jogador"><b>' + esc(j.nome) + "</b><small>ID " + esc(j.id) + " · " + esc(j.ping) + " ms</small></div>"
     ).join("");
   }
 
@@ -559,131 +526,12 @@ const EQUIPE = [
       } else {
         desenharJogadores();
       }
-      if (sessao) desenharConta();
     } catch (e) {
       $("estado-texto").textContent = "Status indisponível";
       $("lista-jogadores").innerHTML = '<div class="vazio">Ainda não foi possível carregar os jogadores online. Se você acabou de publicar o site, aguarde alguns minutos.</div>';
     }
   }
   $("filtro").addEventListener("input", desenharJogadores);
-
-  /* ---------- Sessão (login ou visitante) ---------- */
-  // Guardamos só dados de exibição (nick, skin, informações). Nunca a senha.
-  let sessao = null;
-  try { sessao = JSON.parse(sessionStorage.getItem("sessao") || "null"); } catch (e) { sessao = null; }
-
-  function salvarSessao(s) {
-    sessao = s;
-    try { s ? sessionStorage.setItem("sessao", JSON.stringify(s)) : sessionStorage.removeItem("sessao"); } catch (e) {}
-    desenharConta();
-    desenharJogadores();
-  }
-
-  function estaOnline(nick) {
-    return listaAtual.some((j) => chave(j.nome) === chave(nick));
-  }
-
-  function desenharConta() {
-    const sec = $("conta");
-    const card = $("conta-card");
-    if (!sessao) {
-      sec.hidden = true;
-      $("chip-usuario").hidden = true;
-      $("btn-sair").hidden = true;
-      $("btn-abrir-login").hidden = false;
-      return;
-    }
-    sec.hidden = false;
-    $("btn-abrir-login").hidden = true;
-    $("btn-sair").hidden = false;
-    $("chip-usuario").hidden = false;
-
-    if (sessao.tipo === "visitante") {
-      $("chip-usuario").textContent = "Visitante";
-      card.className = "conta-card visitante-card";
-      card.innerHTML =
-        '<div><div class="conta-nome">Você está como visitante</div>' +
-        '<span class="selo">Modo visitante</span>' +
-        '<p class="visitante-texto">Você pode ver quem está online, as regras e os comandos. Para ter seu personagem e ver seu perfil aqui, baixe o jogo, conecte no servidor e crie sua conta.</p>' +
-        '<div class="botoes"><a class="btn btn-principal" href="' + esc(SITE.download) + '" target="_blank" rel="noopener">Baixar para jogar</a>' +
-        '<button class="btn btn-borda" id="btn-ja-tenho" type="button">Já tenho conta</button></div></div>';
-      $("btn-ja-tenho").addEventListener("click", abrirLogin);
-      return;
-    }
-
-    $("chip-usuario").textContent = sessao.nick;
-    const skinImg = sessao.skin !== undefined && sessao.skin !== null && sessao.skin !== ""
-      ? '<img alt="Skin ' + esc(sessao.skin) + '" src="https://assets.open.mp/assets/images/skins/' + encodeURIComponent(sessao.skin) + '.png" onerror="this.parentNode.innerHTML=\'<span>Skin ' + esc(sessao.skin) + '</span>\'">'
-      : "<span>Sem skin</span>";
-    const campos = (sessao.campos || []).map((c) => '<div class="campo"><span>' + esc(c.rotulo) + "</span><strong>" + esc(c.valor) + "</strong></div>").join("");
-    const on = estaOnline(sessao.nick);
-    card.className = "conta-card";
-    card.innerHTML =
-      '<div class="skin-caixa">' + skinImg + "</div>" +
-      "<div><div class=\"conta-nome\">" + esc(sessao.nick) + "</div>" +
-      '<span class="selo' + (on ? " verde" : "") + '">' + (on ? "Online no servidor agora" : "Offline no momento") + "</span>" +
-      '<div class="campos">' + (campos || '<div class="campo"><span>Conta</span><strong>Conectada</strong></div>') + "</div></div>";
-  }
-
-  $("btn-sair").addEventListener("click", () => { salvarSessao(null); aviso("Você saiu."); });
-
-  /* ---------- Janela de login ---------- */
-  const dlg = $("dlg");
-  function abrirLogin() {
-    $("erro").textContent = "";
-    $("senha").value = "";
-    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
-    setTimeout(() => $("nick").focus(), 50);
-  }
-  function fecharLogin() {
-    $("senha").value = "";
-    if (typeof dlg.close === "function") dlg.close(); else dlg.removeAttribute("open");
-  }
-  $("btn-abrir-login").addEventListener("click", abrirLogin);
-  $("dlg-fechar").addEventListener("click", fecharLogin);
-  dlg.addEventListener("click", (e) => { if (e.target === dlg) fecharLogin(); });
-
-  $("btn-visitante").addEventListener("click", () => {
-    fecharLogin();
-    salvarSessao({ tipo: "visitante" });
-    document.getElementById("conta").scrollIntoView({ behavior: "smooth" });
-  });
-
-  $("form-login").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const erro = $("erro");
-    const btn = $("btn-enviar");
-    erro.textContent = "";
-
-    if (!SITE.api) {
-      erro.textContent = "O login com conta do jogo ainda não foi ativado neste site. Entre como visitante por enquanto.";
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "Verificando...";
-    try {
-      const r = await fetch(SITE.api.replace(/\/$/, "") + "/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nick: $("nick").value.trim(), senha: $("senha").value })
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.ok) throw new Error(d.erro || "Nick ou senha incorretos.");
-      fecharLogin();
-      salvarSessao({ tipo: "conta", nick: d.perfil.nick, skin: d.perfil.skin, campos: d.perfil.campos || [] });
-      aviso("Bem-vindo, " + d.perfil.nick + "!");
-      document.getElementById("conta").scrollIntoView({ behavior: "smooth" });
-    } catch (err) {
-      erro.textContent = err.message === "Failed to fetch"
-        ? "Não foi possível falar com o servidor de login. Tente novamente em instantes."
-        : err.message;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Entrar com minha conta";
-      $("senha").value = "";
-    }
-  });
 
   /* ---------- Início ---------- */
   desenharConta();
