@@ -1,12 +1,17 @@
-// API DE LOGIN PARA SERVIDOR COM DOF2
-// Roda na MESMA máquina onde está a pasta scriptfiles do servidor. NÃO roda no GitHub.
+// API DE LOGIN - SERVIDOR COM DOF2 (hospedagem TCAdmin / HeavyHost)
 //
-// Instalar:   npm init -y && npm i express cors express-rate-limit
+// A cada login, ela busca SÓ o arquivo daquele jogador por SFTP na hospedagem.
+// Não guarda cópia das contas e os dados estão sempre atualizados.
+//
+// Instalar:   npm install
 // Rodar:      node server.js
 //
-// ANTES DE USAR, ajuste a seção "CONFIGURAÇÃO" abaixo.
+// SEGREDOS (usuário e senha do SFTP) NÃO ficam neste arquivo:
+//   - No seu PC: crie o arquivo segredos.json (copie o segredos.exemplo.json e preencha)
+//   - No Render/outro serviço: use as "Environment Variables" com os mesmos nomes
+// NUNCA envie o segredos.json para o GitHub.
+//
 // A API precisa estar em HTTPS (o site do GitHub é HTTPS e o navegador bloqueia o resto).
-// Ela só LÊ os arquivos. Nunca escreve nada na pasta do servidor.
 
 const express = require("express");
 const fs = require("fs");
@@ -17,11 +22,18 @@ const rateLimit = require("express-rate-limit");
 
 /* ===================== CONFIGURAÇÃO ===================== */
 
-// Endereço do seu site no GitHub Pages (sem barra no final)
+// Endereço do seu site no GitHub Pages: SÓ o domínio, sem /nome-do-repositório e sem barra no final
 const SITE_URL = "https://SEUUSUARIO.github.io";
 
-// Pasta onde o DOF2 salva as contas dos jogadores
-const PASTA_CONTAS = "C:/servidor/scriptfiles/Contas";
+// "sftp" = busca na hospedagem (seu caso)  |  "local" = lê de uma pasta neste computador
+const MODO = "sftp";
+
+// Pasta das contas dentro do servidor. Veja no Gerenciador de Arquivos do TCAdmin.
+// Exemplo: "scriptfiles/Contas"  (sem barra no começo)
+const PASTA_CONTAS = "scriptfiles/Contas";
+
+// Só usado se MODO = "local"
+const PASTA_LOCAL = "C:/servidor/scriptfiles/Contas";
 
 // Extensão dos arquivos de conta
 const EXTENSAO = ".ini";
@@ -31,12 +43,7 @@ const CAMPO_SENHA = "Senha";
 const CAMPO_SKIN = "Skin";
 const CAMPO_NOME = "Nome";
 
-// Como a senha é calculada. Rode o testar-hash.js para descobrir qual é a sua.
-//   "senha"       -> SHA256 da senha pura
-//   "senha+nick"  -> SHA256 de (senha + nick)
-//   "nick+senha"  -> SHA256 de (nick + senha)
-//   "senha+salt"  -> SHA256 de (senha + SALT_FIXO)
-//   "salt+senha"  -> SHA256 de (SALT_FIXO + senha)
+// Como a senha é calculada (SHA256 de senha + salt)
 const SHA256_MODO = "senha+salt";
 const SALT_FIXO = "78sdjs86d2h";
 
@@ -52,13 +59,21 @@ const CAMPOS = [
   { rotulo: "Tempo de jogo", tipo: "tempo" },
   { rotulo: "VIP",      chave: "Vip", ocultarSeZero: true },
   { rotulo: "Admin",    chave: "Admin", ocultarSeZero: true }
-  // Adicione mais, por exemplo: { rotulo: "Casa", chave: "Casa", ocultarSeZero: true },
 ];
 
 /* ======================================================== */
 
+// Lê usuário/senha do SFTP: primeiro das variáveis de ambiente, depois do segredos.json
+function carregarSegredos() {
+  let arq = {};
+  try { arq = JSON.parse(fs.readFileSync(path.join(__dirname, "segredos.json"), "utf8")); } catch (e) {}
+  const v = (k) => process.env[k] || arq[k];
+  return { host: v("SFTP_HOST"), port: Number(v("SFTP_PORT") || 22), username: v("SFTP_USER"), password: v("SFTP_PASS") };
+}
+const SEGREDOS = carregarSegredos();
+
 const app = express();
-app.set("trust proxy", 1); // necessário se estiver atrás de Cloudflare/Nginx
+app.set("trust proxy", 1); // necessário atrás de Render/Cloudflare/Nginx
 app.use(express.json({ limit: "2kb" }));
 app.use(cors({ origin: SITE_URL }));
 
@@ -69,10 +84,13 @@ app.use("/login", rateLimit({
   message: { ok: false, erro: "Muitas tentativas. Aguarde alguns minutos." }
 }));
 
-// Lê um arquivo do DOF2 (linhas "Campo = Valor") e devolve um objeto
-function lerArquivo(caminho) {
+// Página simples para você conferir se a API está no ar
+app.get("/", (req, res) => res.type("text").send("API de login online."));
+
+// ---------- Leitura dos arquivos ----------
+
+function interpretar(texto) {
   const dados = {};
-  const texto = fs.readFileSync(caminho, "latin1");
   for (const linha of texto.split(/\r?\n/)) {
     const i = linha.indexOf("=");
     if (i < 1) continue;
@@ -82,19 +100,46 @@ function lerArquivo(caminho) {
 }
 const pegar = (dados, campo) => dados[String(campo).toLowerCase()];
 
-// Procura o arquivo da conta ignorando maiúsculas/minúsculas.
-// Só aceita arquivos que realmente existem na pasta (evita acessar outras pastas).
-function acharArquivo(nick) {
+// Procura o arquivo ignorando maiúsculas/minúsculas. Só aceita nomes que existem na pasta.
+function acharNome(nomes, nick) {
   const alvo = (nick + EXTENSAO).toLowerCase();
-  const nome = fs.readdirSync(PASTA_CONTAS).find((n) => n.toLowerCase() === alvo);
-  return nome ? path.join(PASTA_CONTAS, nome) : null;
+  return nomes.find((n) => n.toLowerCase() === alvo) || null;
 }
+
+async function buscarContaLocal(nick) {
+  const nome = acharNome(fs.readdirSync(PASTA_LOCAL), nick);
+  if (!nome) return null;
+  return { nickReal: path.basename(nome, EXTENSAO), texto: fs.readFileSync(path.join(PASTA_LOCAL, nome), "latin1") };
+}
+
+// Guarda a lista de arquivos por 60 segundos para não pedir toda hora
+let cacheLista = { quando: 0, nomes: [] };
+
+async function buscarContaSftp(nick) {
+  const Client = require("ssh2-sftp-client");
+  const sftp = new Client();
+  try {
+    await sftp.connect({ host: SEGREDOS.host, port: SEGREDOS.port, username: SEGREDOS.username, password: SEGREDOS.password, readyTimeout: 15000 });
+    if (Date.now() - cacheLista.quando > 60000) {
+      cacheLista = { quando: Date.now(), nomes: (await sftp.list(PASTA_CONTAS)).map((f) => f.name) };
+    }
+    const nome = acharNome(cacheLista.nomes, nick);
+    if (!nome) return null;
+    const buf = await sftp.get(PASTA_CONTAS + "/" + nome);
+    return { nickReal: path.basename(nome, EXTENSAO), texto: Buffer.from(buf).toString("latin1") };
+  } finally {
+    try { await sftp.end(); } catch (e) {}
+  }
+}
+
+const buscarConta = MODO === "local" ? buscarContaLocal : buscarContaSftp;
+
+// ---------- Senha ----------
 
 const iguais = (a, b) => {
   const A = Buffer.from(String(a)), B = Buffer.from(String(b));
   return A.length === B.length && crypto.timingSafeEqual(A, B);
 };
-
 const sha256 = (t) => crypto.createHash("sha256").update(t, "latin1").digest("hex").toUpperCase();
 
 function calcularHash(senha, nick) {
@@ -119,10 +164,7 @@ function montarCampos(dados) {
   for (const c of CAMPOS) {
     let valor;
     if (c.tipo === "tempo") {
-      const d = pegar(dados, "DiasJogadas") || 0;
-      const h = pegar(dados, "HorasJogadas") || 0;
-      const m = pegar(dados, "MinutosJogadas") || 0;
-      valor = d + "d " + h + "h " + m + "min";
+      valor = (pegar(dados, "DiasJogadas") || 0) + "d " + (pegar(dados, "HorasJogadas") || 0) + "h " + (pegar(dados, "MinutosJogadas") || 0) + "min";
     } else {
       valor = pegar(dados, c.chave);
       if (valor === undefined) continue;
@@ -133,6 +175,8 @@ function montarCampos(dados) {
   }
   return lista;
 }
+
+// ---------- Login ----------
 
 app.post("/login", async (req, res) => {
   const nick = String(req.body.nick || "").trim();
@@ -145,18 +189,17 @@ app.post("/login", async (req, res) => {
   }
 
   try {
-    const arquivo = acharArquivo(nick);
-    if (!arquivo) return res.status(401).json(erroGenerico);
+    const conta = await buscarConta(nick);
+    if (!conta) return res.status(401).json(erroGenerico);
 
-    const nickReal = path.basename(arquivo, EXTENSAO);
-    const dados = lerArquivo(arquivo);
-    if (!verificarSenha(senha, nickReal, dados)) return res.status(401).json(erroGenerico);
+    const dados = interpretar(conta.texto);
+    if (!verificarSenha(senha, conta.nickReal, dados)) return res.status(401).json(erroGenerico);
 
     // Devolve SOMENTE o que pode ser mostrado. Nunca envie senha, hash, IP ou serial.
     res.json({
       ok: true,
       perfil: {
-        nick: pegar(dados, CAMPO_NOME) || nickReal,
+        nick: pegar(dados, CAMPO_NOME) || conta.nickReal,
         skin: pegar(dados, CAMPO_SKIN),
         campos: montarCampos(dados)
       }
@@ -167,4 +210,4 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("API de login rodando na porta 3000"));
+app.listen(process.env.PORT || 3000, () => console.log("API de login rodando na porta " + (process.env.PORT || 3000)));
